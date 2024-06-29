@@ -26,25 +26,31 @@ def model_info(model):  # Plots a line-by-line description of a PyTorch model
 			i, name, p.requires_grad, p.numel(), list(p.shape), p.mean(), p.std()))
 	print('\n%g layers, %g parameters, %g gradients' % (i + 1, nP, nG))
 
-def plot_one_box(x, img, color=None, label=None, line_thickness=None):  # Plots one bounding box on image img
+def plot_one_box(x, img, color=None, label=None, line_thickness=None,conf=0):  # Plots one bounding box on image img
 	tl = line_thickness or round(0.001 * max(img.shape[0:2])) + 1  # line thickness
 	color = color or [random.randint(0, 255) for _ in range(3)]
 
 	#c1, c2 = (int(x[0]), int(x[1])), (int(x[2]), int(x[3]))
 	#cv2.rectangle(img, c1, c2, color, thickness=tl)
 
-	cv2.line(img, (int(x[0]), int(x[1])), (int(x[2]), int(x[3])), color, tl)
-	cv2.line(img, (int(x[2]), int(x[3])), (int(x[4]), int(x[5])), color, tl)
-	cv2.line(img, (int(x[4]), int(x[5])), (int(x[6]), int(x[7])), color, tl)
-	cv2.line(img, (int(x[6]), int(x[7])), (int(x[0]), int(x[1])), color, tl)
-
-
-	if label:
-		tf = max(tl - 1, 1)  # font thickness
-		t_size = cv2.getTextSize(label, 0, fontScale=tl / 3, thickness=tf)[0]
-		c2 = c1[0] + t_size[0], c1[1] - t_size[1] - 3
-		cv2.rectangle(img, c1, c2, color, -1)  # filled
-		cv2.putText(img, label, (c1[0], c1[1] - 2), 0, tl / 3, [225, 255, 255], thickness=tf, lineType=cv2.LINE_AA)
+	cv2.line(img, (int(x[0]), int(x[1])), (int(x[2]), int(x[3])), color, 2)
+	cv2.line(img, (int(x[2]), int(x[3])), (int(x[4]), int(x[5])), color, 2)
+	cv2.line(img, (int(x[4]), int(x[5])), (int(x[6]), int(x[7])), color, 2)
+	cv2.line(img, (int(x[6]), int(x[7])), (int(x[0]), int(x[1])), color, 2)
+	tf = max(tl - 1, 1)
+	testing_str = str(conf.float().item())
+	cv2.putText(img,str(0), (int(x[0]), int(x[1])), 0, tl / 3, [225, 255, 255], thickness=tf, lineType=cv2.LINE_AA)
+	cv2.putText(img,testing_str, (int(x[0]), int(x[1])), 0, tl / 3, [225, 255, 255], thickness=tf, lineType=cv2.LINE_AA)
+	cv2.putText(img,str(1), (int(x[2]), int(x[3])), 0, tl / 3, [225, 255, 255], thickness=tf, lineType=cv2.LINE_AA)
+	cv2.putText(img,str(2), (int(x[4]), int(x[5])), 0, tl / 3, [225, 255, 255], thickness=tf, lineType=cv2.LINE_AA)
+	cv2.putText(img,str(3), (int(x[6]), int(x[7])), 0, tl / 3, [225, 255, 255], thickness=tf, lineType=cv2.LINE_AA)
+	# if label:
+	# 	  # font thickness
+	# 	t_size = cv2.getTextSize(label, 0, fontScale=tl / 3, thickness=tf)[0]
+	# 	c2 = c1[0] + t_size[0], c1[1] - t_size[1] - 3
+	# 	cv2.rectangle(img, c1, c2, color, -1)  # filled
+	# 	cv2.putText(img, label, (c1[0], c1[1] - 2), 0, tl / 3, [225, 255, 255], thickness=tf, lineType=cv2.LINE_AA)
+        
 
 def bbox_iou(box1, box2):
 	"""
@@ -70,29 +76,7 @@ def bbox_iou(box1, box2):
 
 	return iou.to(device)
 
-def reorganize_targets(t, nTb):
-	tc = t[:, 0]
-	t = t[:, 1:9].view(nTb, 4, 2)
 
-	x = t[..., 0]
-	y = t[..., 1]
-	y_sorted, y_indices = torch.sort(y)
-	
-	x_sorted = torch.zeros(nTb, 4)
-	for i in range(0, nTb):
-		x_sorted[i] = x[i, y_indices[i]]
-
-
-	x_sorted[:, :2], x_top_indices = torch.sort(x_sorted[:, :2])
-	x_sorted[:, 2:4], x_bottom_indices = torch.sort(x_sorted[:, 2:4], descending=True)
-	for i in range(0, nTb):
-		y_sorted[i, :2] = y_sorted[i, :2][x_top_indices[i]]
-		y_sorted[i, 2:4] = y_sorted[i, 2:4][x_bottom_indices[i]]
-
-	t = torch.cat((x_sorted[:,0].unsqueeze(1), y_sorted[:,0].unsqueeze(1), x_sorted[:,1].unsqueeze(1), y_sorted[:,1].unsqueeze(1), 
-					 x_sorted[:,2].unsqueeze(1), y_sorted[:,2].unsqueeze(1), x_sorted[:,3].unsqueeze(1), y_sorted[:,3].unsqueeze(1)), 1)
-
-	return torch.cat((tc.unsqueeze(1), t), 1)
 
 
 def build_targets(pred_boxes, pred_conf, pred_cls, target, anchor_wh, nA, nC, nG, requestPrecision):
@@ -118,15 +102,18 @@ def build_targets(pred_boxes, pred_conf, pred_cls, target, anchor_wh, nA, nC, nG
 
 	cuda = torch.cuda.is_available()
 	device = torch.device('cuda:0' if cuda else 'cpu')
-
+	print(nB)
 	for b in range(nB):
 		nTb = nT[b]  # number of targets per image
 		if nTb == 0:
 			continue
 		t = target[b]
 		FN[b, :nTb] = 1
-
-		t = reorganize_targets(t, nTb)
+# 		print(t)
+# 		t = reorganize_targets(t, nTb)
+# 		print(t)
+# 		print("----------------------------------------------")
+        
 
 		# Convert to position relative to box
 		TC[b, :nTb] = t[:, 0].long()
@@ -277,7 +264,51 @@ def bbox_iou_nms(box1, box2):
 				iou[i] = 0
 
 	return iou.to(device)
+def bbox_iou_nms_test(box1, box2,image_area,area_threshold):
+	cuda = torch.cuda.is_available()
+	device = torch.device('cuda:0' if cuda else 'cpu')
 
+	nBox = box2.size()[0]
+
+	iou = torch.zeros(nBox)
+	polygon1 = Polygon(box1.view(4,2)).convex_hull
+	for i in range(0, nBox):
+		polygon2 = Polygon(box2[i,:].view(4,2)).convex_hull
+		if polygon2.area <= (image_area * area_threshold):
+# 			print("poly area is less")
+			iou[i] = 0
+			continue
+		if polygon1.intersects(polygon2):
+			try:
+				inter_area = polygon1.intersection(polygon2).area
+				union_area = polygon1.union(polygon2).area
+				iou[i] =  inter_area / union_area
+			except shapely.geos.TopologicalError:
+				print('shapely.geos.TopologicalError occured, iou set to 0')
+				iou[i] = 0
+
+	return iou.to(device)
+
+
+def drop_small_boxes(box1,image_area,area_threshold):
+	nBox = box1.size()[0]
+	keep_index = []
+	for i in range(0, nBox):
+		polygon2 = Polygon(box1[i,:].view(4,2)).convex_hull
+		if (polygon2.area > (image_area * area_threshold)):
+# 			print(polygon2.area,"-----------------",(image_area * area_threshold))
+			keep_index.append(i)
+	return keep_index
+
+def get_all_boxes(box1,image_area,area_threshold):
+	nBox = box1.size()[0]
+	keep_index = []
+	for i in range(0, nBox):
+		polygon2 = Polygon(box1[i,:].view(4,2)).convex_hull
+		if (polygon2.area > (image_area * area_threshold)):
+# 			print(polygon2.area,"-----------------",(image_area * area_threshold))
+			keep_index.append(i)
+	return keep_index
 
 def non_max_suppression(prediction, cls_thres=0.5, nms_thres=0.4):
 	prediction = prediction.cpu()
@@ -321,7 +352,73 @@ def non_max_suppression(prediction, cls_thres=0.5, nms_thres=0.4):
 					break
 				# Get the IOUs for all boxes with lower confidence
 				ious = bbox_iou_nms(max_detections[-1].squeeze(0)[0:8], detections_class[1:][:, 0:8])
+# 				print("NONMAX")
+				# Remove detections with IoU >= NMS threshold
+				detections_class = detections_class[1:][ious < nms_thres]
 
+			if len(max_detections) > 0:
+				max_detections = torch.cat(max_detections).data
+				# Add max detections to outputs
+				output[image_i] = max_detections if output[image_i] is None else torch.cat(
+					(output[image_i], max_detections))
+
+	return output
+
+
+
+def non_max_suppression_test(prediction,image_area ,area_threshold,cls_thres=0.5, nms_thres=0.4):
+	prediction = prediction.cpu()
+
+	output = [None for _ in range(len(prediction))]
+
+	for image_i, pred in enumerate(prediction):
+		class_prob, class_pred = torch.max(F.softmax(pred[:, 9:], 1), 1)
+
+		v = (class_prob > cls_thres).numpy()
+		v = v.nonzero()
+
+		pred = pred[v]
+		class_prob = class_prob[v]
+		class_pred = class_pred[v]
+
+		# If none are remaining => process next image
+		nP = pred.shape[0]
+		if not nP:
+			continue
+
+		detections = torch.cat((pred[:, :9], class_prob.float().unsqueeze(1), class_pred.float().unsqueeze(1)), 1)
+		# Iterate through all predicted classes
+		keep_index = drop_small_boxes(detections[:,0:8],image_area,area_threshold)
+        
+		detections = detections[keep_index].clone()
+		unique_labels = detections[:, -1].cpu().unique()
+#         max_detections = []
+# 		for detection in detections:
+#             max_detections.append(detection.unsqueeze(0))
+            
+		if prediction.is_cuda:
+			unique_labels = unique_labels.cuda()
+		
+
+		for c in unique_labels:
+			detections_class = detections[detections[:, -1] == c]
+			# Sort through confidence in one class
+			_, conf_sort_index = torch.sort(detections_class[:, 8], descending=True)
+			detections_class = detections_class[conf_sort_index]
+
+			max_detections = []
+
+			while detections_class.shape[0]:
+				# Get detection with highest confidence and save as max detection
+				max_detections.append(detections_class[0].unsqueeze(0))
+				# Stop if we're at the last detection
+				if len(detections_class) == 1:
+					break
+                
+
+				# Get the IOUs for all boxes with lower confidence
+				ious = bbox_iou_nms_test(max_detections[-1].squeeze(0)[0:8], detections_class[1:][:, 0:8],image_area,area_threshold)
+# 				print("NONMAX")
 				# Remove detections with IoU >= NMS threshold
 				detections_class = detections_class[1:][ious < nms_thres]
 

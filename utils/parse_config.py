@@ -3,7 +3,7 @@ def parse_data_config(path):
 	options = dict()
 	options['gpus'] = '0,1,2,3'
 	options['num_workers'] = '10'
-	with open(path, 'r') as fp:
+	with open(path, 'r', errors='ignore') as fp:
 		lines = fp.readlines()
 	for line in lines:
 		line = line.strip()

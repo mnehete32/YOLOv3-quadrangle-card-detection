@@ -170,7 +170,7 @@ class YOLOLayer(nn.Module):
 
 				lconf = (k * 10) * BCEWithLogitsLoss(pred_conf, mask.float())
 
-				lcls = (k / nC) * CrossEntropyLoss(pred_cls[mask], torch.argmax(tcls, 1))
+				lcls = (k / self.nC) * CrossEntropyLoss(pred_cls[mask], torch.argmax(tcls, 1))
 			else:
 				lx1, ly1, lx2, ly2, lx3, ly3, lx4, ly4, lcls, lconf = \
 				FT([0]), FT([0]), FT([0]), FT([0]), FT([0]), FT([0]), FT([0]), FT([0]), FT([0]), FT([0])

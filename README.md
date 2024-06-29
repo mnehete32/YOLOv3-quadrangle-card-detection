@@ -1,8 +1,8 @@
-# YOLOv3 with quadrangle
+# YOLOv3 with quadrangle for card detection and orientation correction
 Reimplementation of YOLOv3 with quadrangle
 
 This is a reimplementation of [YOLOv3: An Incremental Improvement](https://pjreddie.com/darknet/yolo/) and is based on [Ultralytics LLC's PyTorch implementation](https://github.com/ultralytics/yolov3).
-This work detects obejcts in arbitrary directions with quadrangle, and implemented on ICDAR2015 text dataset for example.
+This work detects obejcts in arbitrary directions with quadrangle, and implemented on [Midv-500](https://arxiv.org/abs/1807.05786)  dataset for example.
 
 ## Requirements
 * Python3
@@ -39,7 +39,22 @@ Checkpoints are saved in weights.
 
 `$ python3 detect.py`
 
-![](data/1.jpg)
-![](data/2.jpg)
-![](data/3.jpg)
+## Results
+
+1. Predicted bounding box plotted on the image
+![](results/box_plotted/CA02_10.jpg)</br>
+- After applying rotation correction </br>
+![](results/rotation_corrected/0_CA02_10.jpg)
+
+
+
+
+2. Predicted bounding box plotted on randomly rotated image
+![](results/box_plotted/HS06_17.jpg)</br>
+- After applying rotation correction</br>
+![](results/rotation_corrected/0_HS06_17.jpg)
+
+
+## This rotation correction can be used to correct orientation of the card which can be used for applying image to text and extract text correctly from the card.
+
 

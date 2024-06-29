@@ -1,4 +1,4 @@
-numpy
-torch
-opencv-python
-Shapely
+numpy==1.21.6
+torch==1.11.0+cu102
+opencv-python==4.7.0.72
+Shapely==2.0.1

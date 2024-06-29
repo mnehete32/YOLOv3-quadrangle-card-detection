@@ -1,5 +1,5 @@
 classes=1
-train=./Dataset/train.part
+train=trainable_dataset_files/train.part
 names=data/icdar.names
 backup=backup/
 eval=coco
